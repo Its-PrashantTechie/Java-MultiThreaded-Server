@@ -2,49 +2,46 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class Client {
-    
-    public Runnable getRunnable() throws UnknownHostException, IOException {
-        return new Runnable() {
-            @Override
-            public void run() {
-                int port = 8010;
+    private static final String HOST = "localhost";
+    private static final int PORT = 8010;
+
+    public void start() {
+        try (
+            Socket socket = new Socket(HOST, PORT);
+            BufferedReader fromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+            PrintWriter toServer = new PrintWriter(socket.getOutputStream(), true)
+        ) {
+            System.out.println("Connected to server at " + HOST + ":" + PORT);
+
+            Thread readerThread = new Thread(() -> {
                 try {
-                    InetAddress address = InetAddress.getByName("localhost");
-                    Socket socket = new Socket(address, port);
-                    try (
-                        PrintWriter toSocket = new PrintWriter(socket.getOutputStream(), true);
-                        BufferedReader fromSocket = new BufferedReader(new InputStreamReader(socket.getInputStream()))
-                    ) {
-                        toSocket.println("Hello from Client " + socket.getLocalSocketAddress());
-                        String line = fromSocket.readLine();
-                        System.out.println("Response from Server " + line);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    String message;
+                    while ((message = fromServer.readLine()) != null) {
+                        System.out.println("Server: " + message);
                     }
-                    // The socket will be closed automatically when leaving the try-with-resources block
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (IOException ex) {
+                    System.out.println("Connection closed by server.");
                 }
-                
+            });
+            readerThread.start();
+
+            String message;
+            while ((message = userInput.readLine()) != null) {
+                toServer.println(message);
+                if ("exit".equalsIgnoreCase(message)) {
+                    break;
+                }
             }
-        };
-    }
-    
-    public static void main(String[] args){
-        Client client = new Client();
-        for(int i=0; i<100; i++){
-            try{
-                Thread thread = new Thread(client.getRunnable());
-                thread.start();
-            }catch(Exception ex){
-                return;
-            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
-        return;
+    }
+
+    public static void main(String[] args) {
+        new Client().start();
     }
 }
