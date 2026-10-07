@@ -17,6 +17,9 @@ public class Client {
         BufferedReader fromSocket = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         toSocket.println("Hello World from socket "+socket.getLocalSocketAddress());
         String line = fromSocket.readLine();
+        if (line != null) {
+            System.out.println("Server response: " + line);
+        }
         toSocket.close();
         fromSocket.close();
         socket.close();
